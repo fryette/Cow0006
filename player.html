@@ -1,150 +1,64 @@
+
+<!DOCTYPE html>
 <html>
 <head>
-  <script type="text/javascript"
-      src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js">
-  </script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body, html {
+  height: 100%;
+  margin: 0;
+  font: 400 15px/1.8 "Lato", sans-serif;
+  color: #777;
+}
+
+.bgimg-1, .bgimg-2, .bgimg-3 {
+  position: relative;
+  opacity: 0.65;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+
+}
+.bgimg-1 {
+  background-image: url("img_parallax.jpg");
+  height: 100%;
+}
+
+.caption {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  text-align: center;
+  color: #000;
+}
+
+.caption span.border {
+  background-color: #111;
+  color: #fff;
+  padding: 18px;
+  font-size: 25px;
+  letter-spacing: 10px;
+}
+
+h3 {
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  font: 20px "Lato", sans-serif;
+  color: #111;
+}
+</style>
 </head>
 <body>
-  <cast-media-player id="player"></cast-media-player>
-  <script>
-  const context = cast.framework.CastReceiverContext.getInstance();
-  const player = context.getPlayerManager();
-  player.setMessageInterceptor(
-    cast.framework.messages.MessageType.LOAD,
-    request => {
-      console.log(request.media.contentId);
-      return request;
-    }
-  );
-  player.setMessageInterceptor(
-    cast.framework.messages.MessageType.QUEUE_LOAD,
-    request => {
-      console.log('queue load', request.items);
-      return request;
-    }
-  );
-  player.setMessageInterceptor(
-    cast.framework.messages.MessageType.MEDIA_STATUS,
-    status => {
-      status.customData = {};
-      return status;
-    }
-  );
-  const YourServer = {
-    getPrevMedias: function(id) {
-      console.log('getPrevMedias', id?id:'no input');
-      return [];
-    },
-    getNextMedias: function(id) {
-      console.log('getNextMedias', id?id:'no input');
-      return [];
-    },
-    trackUsage: function(id) {
-      console.log('trackUsage', id?id:'no input');
-    }
-  };
-  const DemoQueue = class extends cast.framework.QueueBase {
-    constructor() {
-      super();
-      YourServer.onSomeEvent = this.updateEntireQueue_;
-    }
-  /**
-    * Initializes the queue.
-    * @param {!cast.framework.messages.LoadRequestData} requestData
-    * @return {!cast.framework.messages.QueueData}
-    * or non-null Promise containing nullable cast.framework.messages.QueueData
-    */
-  initialize(requestData) {
-    console.log('initialize', requestData);
-    if(requestData.media.contentId !== 'queue') {
-      return null; // enable default behaviour
-    }
-    // Put the first set of items into the queue
-    var it = this.nextItems();
-    console.log('initialize', it);
-    return it.then(
-      items => {
-        console.log('got items in initialize', items);
-        const queueData = requestData.queueData || new cast.framework.messages.QueueData();
-        queueData.name = 'Your Playlist';
-        queueData.description = 'Your Playlist Description';
-        queueData.items = items;
-        return queueData;
-      });
-  }
-  /**
-    * Picks a set of items from remote server after the reference item id and
-    * return as the next items to be inserted into the queue. When
-    * referenceItemId is omitted, items are simply appended to the end of the
-    * queue.
-    * @param {number} referenceItemId
-    * @return {!Array<cast.framework.messages.QueueItem>}
-    * returns (nullable Array of non-null cast.framework.messages.QueueItem
-    * or non-null Promise containing nullable Array of non-null cast.framework.messages.QueueItem)
-    *
-    * a sample queue.json might look like:
-    *
-    * [
-    * { "itemId": 1, "url": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd" },
-    * { "itemId": 2, "url": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/motion-20120802-manifest.mpd" },
-    * { "itemId": 3, "url": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops-20120802-manifest.mpd" }
-    * ]
-    *
-    */
-  nextItems(referenceItemId) {
-    // Assume your media has a itemId and the media url
-    var self = this;
-    return fetch('queue.json').then(function(response) {
-      return response.json();
-    }).then(function(data) {
-      return self.constructQueueList_(data);
-    });
-  }
-  /**
-    * Picks a set of items from remote server before the reference item id and
-    * return as the items to be inserted into the queue. When
-    * referenceItemId is omitted, items are simply appended to beginning of the
-    * queue.
-    * @param {number} referenceItemId
-    * @return {!Array<cast.framework.messages.QueueItem>}
-    * returns (nullable Array of non-null cast.framework.messages.QueueItem
-    * or non-null Promise containing nullable Array of non-null cast.framework.messages.QueueItem)
-    */
-  prevItems(referenceItemId) {
-    return this.constructQueueList_(YourServer.getPrevMedias(referenceItemId));
-  }
-  /**
-    * Constructs a list of QueueItems based on the media information containing
-    * the item id and the media url.
-    * @param {number} referenceItemId
-    * @return {!Array<cast.framework.QueueItem>}
-    */
-  constructQueueList_(medias) {
-    const items = [];
-    console.log(medias);
-    for (var i=0; i<medias.length; i++) {
-      var media = medias[i];
-      console.log(media);
-      const item = new cast.framework.messages.QueueItem(media.itemId);
-      item.media = new cast.framework.messages.MediaInformation();
-      item.media.contentId = media.url;
-      item.preloadTime = 5;
-      items.push(item);
-    }
-    console.log('items', items);
-    return items;
-  }
-  /**
-    * Logs the currently playing item.
-    * @param {number} itemId The unique id for the item.
-    * @export
-    */
-  onCurrentItemIdChanged(itemId) {
-    console.log('We are now playing video ' + itemId);
-    YourServer.trackUsage(itemId);
-  }
-  };
-  context.start({queue: new DemoQueue()});
-  </script>
+
+<div class="bgimg-1">
+  <div class="caption">
+    <span class="border">FULL PAGE</span><br>
+    <span class="border">BACKGROUND IMAGE</span>
+  </div>
+</div>
+
+<p style="padding:5px 15px">This example creates a full page background image. Try to resize the browser window to see how it always will cover the full screen (when scrolled to top), and that it scales nicely on all screen sizes.</p>
+
 </body>
 </html>
