@@ -5,7 +5,11 @@
   </script>
 </head>
 <body>
-  TESTESTEST
+  <form action="/action_page.php">
+  First name: <input type="text" name="fname" value="John"><br>
+  Last name: <input type="text" name="lname" value="Doe"><br>
+  <input type="submit" value="Submit form">
+</form>
   <cast-media-player></cast-media-player>
   <script>
     cast.framework.CastReceiverContext.getInstance().start();
