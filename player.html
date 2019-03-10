@@ -1,85 +1,293 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>Cast CAF Receiver</title>
-  </head>
+<html>
 
-  <body>
-    <cast-media-player></cast-media-player>
-    <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/beta/cast_receiver_framework.js"></script>
-    <script>
-    var context = cast.framework.CastReceiverContext.getInstance();
-var playerManager = context.getPlayerManager();
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body,
+    html {
+      height: 100%;
+      margin: 0;
+      font: 400 15px/1.8 "Lato", sans-serif;
+      color: #777;
+    }
 
-function makeRequest (method, url) {
-  return new Promise(function (resolve, reject) {
-    var xhr = new XMLHttpRequest();
-    xhr.open(method, url);
-    xhr.onload = function () {
-      if (this.status >= 200 && this.status < 300) {
-        resolve(JSON.parse(xhr.response));
-      } else {
-        reject({
-          status: this.status,
-          statusText: xhr.statusText
-        });
+    .bgimg-1,
+    .bgimg-2,
+    .bgimg-3 {
+      position: relative;
+      opacity: 0.65;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: cover;
+
+    }
+
+    .bgimg-1 {
+      /* background-image: url("background.jpg"); */
+      background-color: aliceblue;
+      height: 100%;
+      z-index: 10;
+    }
+
+    .board {
+      background-image: url("board.png");
+      max-height: 100%;
+    }
+
+    .caption {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 100%;
+      text-align: center;
+      color: #000;
+    }
+
+    .caption span.border {
+      background-color: #111;
+      color: #fff;
+      padding: 18px;
+      font-size: 25px;
+      letter-spacing: 10px;
+    }
+
+    h3 {
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      font: 20px "Lato", sans-serif;
+      color: #111;
+    }
+
+    .flex-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-container {
+      position: relative;
+      z-index: 10;
+    }
+
+    .discarded-card-container {
+      position: relative;
+      z-index: 30;
+    }
+
+    .home {
+      width: 85px;
+      height: 132px;
+      background: url(cards.png);
+      position: absolute;
+      transition: 2s all;
+      background-color: transparent;
+    }
+  </style>
+</head>
+
+<body>
+
+
+  <div class="bgimg-1">
+
+    <div style="position: fixed; width: 100%; height: 100%; top: 0; left: 0; background-color: rgba(0,0,0,0.6);">
+      <div class="flex-content" style="width: 100%; height: 100%; text-align: center;">
+        <div id="imagesDiv">
+          <div id="yellowContainerTop" class="card-container"></div>
+          <div id="blueContainerTop" class="card-container"></div>
+          <div id="whiteContainerTop" class="card-container"></div>
+          <div id="greenContainerTop" class="card-container"></div>
+          <div id="redContainerTop" class="card-container"></div>
+          <img
+            style="max-height: 100%; max-width: 100%;position: relative; z-index: 20; box-sizing: border-box; padding: 30px;"
+            src="board.png">
+          <div id="yellowContainerDiscarded" class="discarded-card-container"></div>
+          <div id="blueContainerDiscarded" class="discarded-card-container"></div>
+          <div id="whiteContainerDiscarded" class="discarded-card-container"></div>
+          <div id="greenContainerDiscarded" class="discarded-card-container"></div>
+          <div id="redContainerDiscarded" class="discarded-card-container"></div>
+
+          <div id="yellowContainerBottom" class="card-container"></div>
+          <div id="blueContainerBottom" class="card-container"></div>
+          <div id="whiteContainerBottom" class="card-container"></div>
+          <div id="greenContainerBottom" class="card-container"></div>
+          <div id="redContainerBottom" class="card-container"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function GetXPosition(card) {
+      if (card.CardType == 1) {
+        return (9 * 85) * -1;
       }
-    };
-    xhr.onerror = function () {
-      reject({
-        status: this.status,
-        statusText: xhr.statusText
-      });
-    };
-    xhr.send();
-  });
-}
+      else {
+        return ((card.Number - 2) * 85) * -1;
+      }
+    }
+    function GetYPosition(card) {
+      var postion = 0;
 
-playerManager.setMessageInterceptor(
-    cast.framework.messages.MessageType.LOAD,
-    request => {
-      console.log("Intercepting LOAD request")
-      return new Promise((resolve, reject) => {
+      switch (card.ExpeditionType) {
+        case "yellow":
+          postion = 0;
+          break;
+        case "blue":
+          postion = 1;
+          break;
+        case "white":
+          postion = 2;
+          break;
+        case "green":
+          postion = 3;
+          break;
+        case "red":
+          postion = 4;
+          break;
+      }
 
-        if(request.media.contentType == 'video/mp4') {
-          return resolve(request);
+//TODO add cooficent for every image(-6 should be different for each other, -6 for green right now)
+      return ((postion * 131) * -1) - 6;
+    }
+    function GetCardLeftOffset(card) {
+      switch (card.ExpeditionType) {
+        case "yellow":
+          return 70;
+        case "blue":
+          return 185;
+        case "white":
+          return 310;
+        case "green":
+          return 435;
+        case "red":
+          return 560;
+      }
+    }
+    function GetCardContainerName(card) {
+      switch (card.ExpeditionType) {
+        case "yellow":
+          return "yellowContainer";
+        case "blue":
+          return "blueContainer";
+        case "white":
+          return "whiteContainer";
+        case "green":
+          return "greenContainer";
+        case "red":
+          return "redContainer";
+      }
+    }
+    function CreateCardDiv(position) {
+      var div = document.createElement("div");
+      div.className = "home";
+      div.style.left = 900 + 'px'
+      var top = 0;
+
+      switch (position) {
+        case 1:
+          top = -100;
+          break;
+        case -1:
+          top = 100;
+          break;
+        case 2:
+          top = 0;
+          break;
+      }
+
+      div.style.top = top + 'px';
+      return div;
+    }
+    function AddCardTo(card, position) {
+      var div = CreateCardDiv(position);
+      div.style.backgroundPosition = GetXPosition(card) + 'px' + ' ' + GetYPosition(card) + 'px';
+
+      var divToAddName = GetCardContainerName(card) + (position == 1 ? 'Top' : 'Bottom');
+      var divToAdd = document.getElementById(divToAddName);
+      var offset = divToAdd.childNodes.length * 2;
+      var topOffset = divToAdd.childNodes.length * 15;
+      div.style.zIndex = 13 - divToAdd.childNodes.length;
+      divToAdd.appendChild(div);
+
+      setTimeout(function () {
+        div.style.opacity = 1;
+      }, 100);
+      setTimeout(function () {
+        if (position == 1) {
+          div.style.top = -topOffset + 'px';
         }
+        else {
+          div.style.top = -140 + topOffset + 'px';
+        }
+        div.style.left = GetCardLeftOffset(card) + offset + 'px';
+      })
+    }
+    function DiscardCard(card) {
+      var div = CreateCardDiv(-1);
+      var divToAdd = document.getElementById(GetCardContainerName(card) + 'Discarded');
+      div.style.zIndex = divToAdd.childNodes.length + 1;
+      div.style.backgroundPosition = GetXPosition(card) + 'px' + ' ' + GetYPosition(card) + 'px';
+      divToAdd.appendChild(div);
 
-        // Fetch content repository by requested contentId
-        makeRequest('GET', 'https://tse-summit.firebaseio.com/content.json?orderBy=%22$key%22&equalTo=%22'+ request.media.contentId + '%22')
-          .then(function (data) {
-	          var item = data[request.media.contentId];
-	          if(!item) {
-	            // Content could not be found in repository
-	            reject();
-	          } else {
-	            // Adjusting request to make requested content playable
-	            request.media.contentId = item.stream.hls;
-	            request.media.contentType = 'application/x-mpegurl';
+      setTimeout(function () {
+        div.style.opacity = 1;
+      }, 100);
 
-	            // Add metadata
-	            var metadata = new cast.framework.messages.MovieMediaMetadata();
-	            metadata.metadataType = cast.framework.messages.MetadataType.MOVIE;
-	            metadata.title = item.title;
-	            metadata.subtitle = item.author;
+      setTimeout(function () {
+        div.style.top = -190 + 'px';
+        div.style.left = GetCardLeftOffset(card) + 'px';
+      })
+    }
+    function PutCardOnTable(card, position) {
+      if (position == 0) {
+        DiscardCard(card);
+      }
+      else {
+        AddCardTo(card, position);
+      }
+    }
+    var number = 2;
+    var type = "yellow";
+    var isTop = 1;
+    setInterval(function () {
+      PutCardOnTable({
+        ExpeditionType: type,
+        CardType: 0,
+        Number: number
+      }, isTop);
+      number++;
 
-	            resolve(request);
-	          }
-        });
-      });
-    });
+      if (number > 10) {
+        number = 2;
 
-let touchControls = cast.framework.ui.Controls.getInstance();
-// Clear default buttons
-touchControls.clearDefaultSlotAssignments();
-touchControls.assignButton(
-    cast.framework.ui.ControlsSlot.SLOT_1,
-    cast.framework.ui.ControlsButton.SEEK_BACKWARD_10
-);
+        switch (type) {
+          case "yellow":
+            type = "blue";
+            break;
+          case "blue":
+            type = "white";
+            break;
+          case "white":
+            type = "green";
+            break;
+          case "green":
+            type = "red";
+            break;
+          case "red":
+            type = null;
+            break;
+        }
+      }
 
-context.start({ touchScreenOptimizedApp: true });
+      if (isTop == -1) {
+        isTop = 1;
+        return;
+      }
+      --isTop;
+    }, 3000);
+  </script>
+</body>
 
-    </script>
-  </body>
 </html>
