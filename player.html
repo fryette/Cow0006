@@ -1,56 +1,85 @@
-
 <!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-body, html {
-  height: 100%;
-  margin: 0;
-  font: 400 15px/1.8 "Lato", sans-serif;
-  color: #777;
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Cast CAF Receiver</title>
+  </head>
+
+  <body>
+    <cast-media-player></cast-media-player>
+    <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/beta/cast_receiver_framework.js"></script>
+    <script>
+    var context = cast.framework.CastReceiverContext.getInstance();
+var playerManager = context.getPlayerManager();
+
+function makeRequest (method, url) {
+  return new Promise(function (resolve, reject) {
+    var xhr = new XMLHttpRequest();
+    xhr.open(method, url);
+    xhr.onload = function () {
+      if (this.status >= 200 && this.status < 300) {
+        resolve(JSON.parse(xhr.response));
+      } else {
+        reject({
+          status: this.status,
+          statusText: xhr.statusText
+        });
+      }
+    };
+    xhr.onerror = function () {
+      reject({
+        status: this.status,
+        statusText: xhr.statusText
+      });
+    };
+    xhr.send();
+  });
 }
-.bgimg-1, .bgimg-2, .bgimg-3 {
-  position: relative;
-  opacity: 0.65;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: cover;
-}
-.bgimg-1 {
-  background-image: url("https://www.w3schools.com/howto/img_parallax.jpg");
-  height: 100%;
-}
-.caption {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 100%;
-  text-align: center;
-  color: #000;
-}
-.caption span.border {
-  background-color: #111;
-  color: #fff;
-  padding: 18px;
-  font-size: 25px;
-  letter-spacing: 10px;
-}
-h3 {
-  letter-spacing: 5px;
-  text-transform: uppercase;
-  font: 20px "Lato", sans-serif;
-  color: #111;
-}
-</style>
-</head>
-<body>
-<script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
-<div class="bgimg-1">
-  <div class="caption">
-    <span class="border">FULL PAGE</span><br>
-    <span class="border">BACKGROUND IMAGE</span>
-  </div>
-</div>
-</body>
+
+playerManager.setMessageInterceptor(
+    cast.framework.messages.MessageType.LOAD,
+    request => {
+      console.log("Intercepting LOAD request")
+      return new Promise((resolve, reject) => {
+
+        if(request.media.contentType == 'video/mp4') {
+          return resolve(request);
+        }
+
+        // Fetch content repository by requested contentId
+        makeRequest('GET', 'https://tse-summit.firebaseio.com/content.json?orderBy=%22$key%22&equalTo=%22'+ request.media.contentId + '%22')
+          .then(function (data) {
+	          var item = data[request.media.contentId];
+	          if(!item) {
+	            // Content could not be found in repository
+	            reject();
+	          } else {
+	            // Adjusting request to make requested content playable
+	            request.media.contentId = item.stream.hls;
+	            request.media.contentType = 'application/x-mpegurl';
+
+	            // Add metadata
+	            var metadata = new cast.framework.messages.MovieMediaMetadata();
+	            metadata.metadataType = cast.framework.messages.MetadataType.MOVIE;
+	            metadata.title = item.title;
+	            metadata.subtitle = item.author;
+
+	            resolve(request);
+	          }
+        });
+      });
+    });
+
+let touchControls = cast.framework.ui.Controls.getInstance();
+// Clear default buttons
+touchControls.clearDefaultSlotAssignments();
+touchControls.assignButton(
+    cast.framework.ui.ControlsSlot.SLOT_1,
+    cast.framework.ui.ControlsButton.SEEK_BACKWARD_10
+);
+
+context.start({ touchScreenOptimizedApp: true });
+
+    </script>
+  </body>
 </html>
